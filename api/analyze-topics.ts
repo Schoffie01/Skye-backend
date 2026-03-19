@@ -23,9 +23,9 @@ export default async function handler(req: Request) {
             });
         }
 
-        const response = await client.responses.create({
+        const response = await client.chat.completions.create({
             model: "gpt-4o-mini",
-            input: [
+            messages: [
                 {
                     role: "system",
                     content:
@@ -50,9 +50,10 @@ ${text}
           `,
                 },
             ],
+            response_format: { type: "json_object" },
         });
 
-        const raw = response.output_text;
+        const raw = response.choices[0].message.content || "{}";
 
         let parsed;
         try {
