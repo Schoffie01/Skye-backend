@@ -29,10 +29,11 @@ export default async function handler(req: Request) {
 
         const cleanedConversations = conversations
             .filter((c) => c && typeof c.id === "string" && typeof c.text === "string")
+            .slice(0, 4)
             .map((c) => ({
                 id: c.id,
                 title: typeof c.title === "string" ? c.title : "",
-                text: c.text.slice(0, 8000),
+                text: c.text.slice(0, 1500),
             }));
 
         if (cleanedConversations.length === 0) {
