@@ -23,6 +23,9 @@ export default async function handler(req: Request) {
             });
         }
 
+        // Truncate text to prevent timeout (match batch-analyze behavior)
+        const truncatedText = text.slice(0, 1500);
+
         const response = await client.chat.completions.create({
             model: "gpt-3.5-turbo",
             messages: [
@@ -46,7 +49,7 @@ Rules:
 {"topics":["topic 1","topic 2"]}
 
 Transcript:
-${text}
+${truncatedText}
           `,
                 },
             ],
