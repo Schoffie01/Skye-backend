@@ -30,7 +30,7 @@ export default async function handler(req: Request) {
         }));
 
         const response = await client.responses.create({
-            model: "gpt-4o-mini",
+            model: "gpt-3.5-turbo",
             input: [
                 {
                     role: "system",
