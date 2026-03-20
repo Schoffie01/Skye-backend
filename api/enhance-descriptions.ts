@@ -1,5 +1,9 @@
 import OpenAI from "openai";
 
+export const config = {
+    runtime: "edge",
+};
+
 const client = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
@@ -15,6 +19,7 @@ export default async function handler(req: Request) {
     try {
         const body = await req.json();
         const topics = body?.topics;
+        const conversations = body?.conversations || [];
 
         if (!Array.isArray(topics)) {
             return new Response(JSON.stringify({ error: "Missing topics array" }), {
@@ -26,38 +31,52 @@ export default async function handler(req: Request) {
         const cleanedTopics = topics.map((t: any) => ({
             title: String(t?.title ?? ""),
             count: Number(t?.count ?? 0),
-            conversationCount: Number(t?.conversationCount ?? 0),
         }));
 
-        const response = await client.responses.create({
+        // Prepare conversation context for each topic
+        const conversationContext = conversations
+            .map((c: any) => ({
+                title: c.title || "Untitled",
+                text: (c.text || "").slice(0, 500), // First 500 chars for context
+                topics: c.topics || [],
+            }))
+            .slice(0, 10); // Limit to 10 conversations max
+
+        const response = await client.chat.completions.create({
             model: "gpt-3.5-turbo",
-            input: [
+            messages: [
                 {
                     role: "system",
                     content:
-                        "You write short, encouraging, natural descriptions for personal reflection app topics. Return only valid JSON.",
+                        "You analyze recurring topics from personal voice conversations and write insightful, contextual descriptions. Be specific about what the user is actually discussing based on the conversation content. Return only valid JSON.",
                 },
                 {
                     role: "user",
                     content: `
-Create one short description for each topic.
+Create one insightful description for each recurring topic based on the actual conversation content.
 
 Rules:
-- 1 sentence each
-- warm, reflective, encouraging tone
-- not cheesy
-- do not invent hard facts beyond the topic title and counts
-- return JSON in this exact shape:
+- 2-3 sentences each
+- Be SPECIFIC about what the user discussed (e.g., "what" they're working on, "how" it's going, specific details)
+- Use actual details from the conversation excerpts
+- Warm, encouraging, personal tone
+- Make it feel like you understand their specific context, not generic
+- If conversations are too short to extract details, be more general but still warm
+- Return JSON in this exact shape:
 {"descriptions":["desc 1","desc 2"]}
 
-Topics:
+Recurring Topics to Describe:
 ${JSON.stringify(cleanedTopics, null, 2)}
+
+Conversation Excerpts (for context):
+${JSON.stringify(conversationContext, null, 2)}
           `,
                 },
             ],
+            response_format: { type: "json_object" },
         });
 
-        const raw = response.output_text;
+        const raw = response.choices[0].message.content || "{}";
 
         let parsed;
         try {
