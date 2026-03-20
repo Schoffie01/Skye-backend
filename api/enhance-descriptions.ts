@@ -20,6 +20,7 @@ export default async function handler(req: Request) {
         const body = await req.json();
         const topics = body?.topics;
         const conversations = body?.conversations || [];
+        const style = body?.style || "friendly-encouraging";
 
         if (!Array.isArray(topics)) {
             return new Response(JSON.stringify({ error: "Missing topics array" }), {
@@ -42,26 +43,37 @@ export default async function handler(req: Request) {
             }))
             .slice(0, 10); // Limit to 10 conversations max
 
+        // Build style-specific prompt instructions
+        const styleInstructions: Record<string, string> = {
+            "friendly-encouraging": "Write in a warm, supportive tone with positive reinforcement. Focus on progress and growth. Be uplifting and motivational.",
+            "short-actionable": "Be concise and direct. Focus on actionable insights and next steps. Use brief, goal-oriented language. Maximum 2 sentences per topic.",
+            "deep-reflective": "Write thoughtfully and introspectively. Explore deeper meaning and connections. Use contemplative language that encourages self-reflection. 3-4 sentences per topic.",
+            "casual-conversational": "Write like a friend having a conversation. Use relaxed, natural language. Be personable and easy-going, like you're chatting over coffee."
+        };
+
+        const styleInstruction = styleInstructions[style] || styleInstructions["friendly-encouraging"];
+
         const response = await client.chat.completions.create({
             model: "gpt-3.5-turbo",
             messages: [
                 {
                     role: "system",
                     content:
-                        "You analyze recurring topics from personal voice conversations and write insightful, contextual descriptions. Be specific about what the user is actually discussing based on the conversation content. Return only valid JSON.",
+                        `You analyze recurring topics from personal voice conversations and write insightful, contextual descriptions. Be specific about what the user is actually discussing based on the conversation content. ${styleInstruction} Return only valid JSON.`,
                 },
                 {
                     role: "user",
                     content: `
 Create one insightful description for each recurring topic based on the actual conversation content.
 
-Rules:
-- 2-3 sentences each
+Style: ${style}
+${styleInstruction}
+
+Additional Rules:
 - Be SPECIFIC about what the user discussed (e.g., "what" they're working on, "how" it's going, specific details)
 - Use actual details from the conversation excerpts
-- Warm, encouraging, personal tone
 - Make it feel like you understand their specific context, not generic
-- If conversations are too short to extract details, be more general but still warm
+- If conversations are too short to extract details, be more general but maintain the requested style
 - Return JSON in this exact shape:
 {"descriptions":["desc 1","desc 2"]}
 
