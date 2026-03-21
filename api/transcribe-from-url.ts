@@ -1,10 +1,6 @@
 import OpenAI from "openai";
 import { head } from '@vercel/blob';
 
-export const config = {
-    runtime: "edge",
-};
-
 const client = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });

@@ -1,9 +1,5 @@
 import OpenAI from "openai";
 
-export const config = {
-    runtime: "edge",
-};
-
 const client = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
