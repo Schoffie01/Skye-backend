@@ -1,8 +1,5 @@
-import { get } from '@vercel/blob';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import OpenAI from "openai";
-
-export const runtime = 'nodejs';
 
 const client = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -20,23 +17,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(400).json({ error: 'fileUrl is required' });
         }
 
-        console.log('Fetching audio from private blob:', fileUrl);
+        console.log('Fetching audio from public blob:', fileUrl);
 
-        const result = await get(fileUrl, {
-            access: 'private',
-        });
-
-        if (!result || result.statusCode !== 200 || !result.stream) {
+        // Fetch from public blob URL
+        const response = await fetch(fileUrl);
+        
+        if (!response.ok) {
             return res.status(404).json({ error: 'File not found in storage' });
         }
 
-        const arrayBuffer = await new Response(result.stream).arrayBuffer();
+        const arrayBuffer = await response.arrayBuffer();
 
         const audioFile = new File(
             [arrayBuffer],
-            result.blob.pathname.split('/').pop() || 'recording.m4a',
+            'recording.m4a',
             {
-                type: result.blob.contentType || 'audio/m4a',
+                type: 'audio/m4a',
             }
         );
 
@@ -44,8 +40,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         const transcription = await client.audio.transcriptions.create({
             file: audioFile,
-            model: 'gpt-4o-mini-transcribe',
-            // or 'whisper-1' if you want to keep that
+            model: 'whisper-1',
         });
 
         console.log('Transcription completed');
