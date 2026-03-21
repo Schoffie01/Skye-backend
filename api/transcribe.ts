@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 
 export const config = {
-    runtime: "edge",
+    runtime: "nodejs",
 };
 
 const client = new OpenAI({
