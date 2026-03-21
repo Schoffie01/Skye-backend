@@ -27,29 +27,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         const arrayBuffer = await response.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
         
-        console.log('File size:', buffer.length);
-        console.log('First 20 bytes:', buffer.slice(0, 20).toString('hex'));
+        console.log('File size:', arrayBuffer.byteLength);
         
-        // Check file signature to determine actual format
-        const signature = buffer.slice(0, 12).toString('hex');
-        console.log('File signature:', signature);
+        // Create a Blob with the audio data
+        const blob = new Blob([arrayBuffer], { type: 'audio/mp4' });
         
-        // M4A files start with ftyp box, typically: 00 00 00 XX 66 74 79 70
-        // Use audio/mp4 for .m4a files (MPEG-4 audio)
-        const audioFile = new File(
-            [buffer],
-            'recording.m4a',
-            {
-                type: 'audio/mp4', // M4A is MPEG-4 audio, use audio/mp4
-            }
-        );
-
         console.log('Sending to OpenAI:');
         console.log('  - Filename: recording.m4a');
-        console.log('  - Size:', audioFile.size);
+        console.log('  - Size:', blob.size);
         console.log('  - Type: audio/mp4');
+
+        // Use toFile() method which is designed for Node.js environments
+        const audioFile = await OpenAI.toFile(blob, 'recording.m4a', {
+            type: 'audio/mp4',
+        });
 
         const transcription = await client.audio.transcriptions.create({
             file: audioFile,
