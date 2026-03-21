@@ -1,4 +1,3 @@
-import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 
 export const config = {
     runtime: "nodejs",
@@ -13,28 +12,41 @@ export default async function handler(req: Request) {
     }
 
     try {
-        const body = await req.json() as HandleUploadBody;
+        const { pathname, type } = await req.json();
 
-        const jsonResponse = await handleUpload({
-            body,
-            request: req,
-            onBeforeGenerateToken: async (pathname) => {
-                // Validate file type
-                if (!pathname.endsWith('.m4a') && !pathname.endsWith('.mp3') && !pathname.endsWith('.wav')) {
-                    throw new Error('Invalid file type. Only audio files are allowed.');
-                }
+        if (!pathname) {
+            return new Response(
+                JSON.stringify({ error: 'pathname is required' }),
+                { status: 400 }
+            );
+        }
 
-                return {
-                    allowedContentTypes: ['audio/m4a', 'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-m4a'],
-                    maximumSizeInBytes: 25 * 1024 * 1024, // 25MB limit
-                };
-            },
-            onUploadCompleted: async ({ blob }) => {
-                console.log('Upload completed:', blob.url);
-            },
-        });
+        // Validate file type
+        if (!pathname.endsWith('.m4a') && !pathname.endsWith('.mp3') && !pathname.endsWith('.wav')) {
+            throw new Error('Invalid file type. Only audio files are allowed.');
+        }
 
-        return new Response(JSON.stringify(jsonResponse), {
+        // Generate upload URL using Vercel Blob's token-based approach
+        // The client will PUT directly to this URL
+        const baseUrl = process.env.BLOB_STORE_URL || 'https://blob.vercel-storage.com';
+        const token = process.env.BLOB_READ_WRITE_TOKEN;
+        
+        if (!token) {
+            throw new Error('BLOB_READ_WRITE_TOKEN not configured');
+        }
+
+        // Generate upload URL - client will PUT to this
+        const uploadUrl = `${baseUrl}/${pathname}?token=${token}`;
+        
+        // Generate download URL - this is what we'll use to access the file later
+        const downloadUrl = `${baseUrl}/${pathname}`;
+
+        console.log('Generated upload token for:', pathname);
+
+        return new Response(JSON.stringify({ 
+            url: uploadUrl,
+            downloadUrl: downloadUrl,
+        }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' },
         });
