@@ -27,16 +27,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         const arrayBuffer = await response.arrayBuffer();
+        
+        // Get content-type from response or default to audio/mp4
+        const contentType = response.headers.get('content-type') || 'audio/mp4';
+        console.log('Content-Type from storage:', contentType);
 
         const audioFile = new File(
             [arrayBuffer],
             'recording.m4a',
             {
-                type: 'audio/m4a',
+                type: contentType,
             }
         );
 
-        console.log('Sending to OpenAI, file size:', audioFile.size);
+        console.log('Sending to OpenAI, file size:', audioFile.size, 'type:', contentType);
 
         const transcription = await client.audio.transcriptions.create({
             file: audioFile,
