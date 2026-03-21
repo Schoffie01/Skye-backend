@@ -1,3 +1,4 @@
+import { put } from '@vercel/blob';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 // Ensure body parsing is enabled
@@ -16,42 +17,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     try {
         console.log('Request body:', req.body);
-        const { pathname, type } = req.body;
+        const { audioData } = req.body;
 
-        if (!pathname) {
-            return res.status(400).json({ error: 'pathname is required' });
+        if (!audioData) {
+            return res.status(400).json({ error: 'audioData is required' });
         }
 
-        // Validate file type
-        if (!pathname.endsWith('.m4a') && !pathname.endsWith('.mp3') && !pathname.endsWith('.wav')) {
-            throw new Error('Invalid file type. Only audio files are allowed.');
-        }
-
-        // Generate upload URL using Vercel Blob's token-based approach
-        // The client will PUT directly to this URL
-        const baseUrl = process.env.BLOB_STORE_URL || 'https://blob.vercel-storage.com';
-        const token = process.env.BLOB_READ_WRITE_TOKEN;
+        // Decode base64 audio data
+        const audioBuffer = Buffer.from(audioData, 'base64');
         
-        if (!token) {
-            throw new Error('BLOB_READ_WRITE_TOKEN not configured');
-        }
+        const filename = `recordings/recording-${Date.now()}.m4a`;
 
-        // Generate upload URL - client will PUT to this
-        const uploadUrl = `${baseUrl}/${pathname}?token=${token}`;
-        
-        // Generate download URL - this is what we'll use to access the file later
-        const downloadUrl = `${baseUrl}/${pathname}`;
+        console.log('Uploading to Vercel Blob:', filename, 'Size:', audioBuffer.length);
 
-        console.log('Generated upload token for:', pathname);
+        // Upload directly to Vercel Blob using put()
+        const blob = await put(filename, audioBuffer, {
+            access: 'public',
+            contentType: 'audio/m4a',
+        });
+
+        console.log('Upload complete:', blob.url);
 
         return res.status(200).json({ 
-            url: uploadUrl,
-            downloadUrl: downloadUrl,
+            url: blob.url,
         });
     } catch (error: any) {
         console.error('Upload token error:', error);
         return res.status(500).json({ 
-            error: error.message || 'Failed to generate upload token' 
+            error: error.message || 'Failed to upload audio' 
         });
     }
 }
