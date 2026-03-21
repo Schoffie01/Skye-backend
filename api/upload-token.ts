@@ -1,11 +1,21 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
+// Ensure body parsing is enabled
+export const config = {
+    api: {
+        bodyParser: true,
+    },
+};
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+    console.log('Upload token handler called, method:', req.method);
+    
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
     try {
+        console.log('Request body:', req.body);
         const { pathname, type } = req.body;
 
         if (!pathname) {
