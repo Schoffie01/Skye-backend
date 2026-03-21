@@ -1,5 +1,5 @@
+import { download, head } from '@vercel/blob';
 import OpenAI from "openai";
-import { head } from '@vercel/blob';
 
 const client = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -33,17 +33,15 @@ export default async function handler(req: Request) {
             );
         }
 
-        console.log('Fetching audio from blob:', fileUrl);
+        console.log('Downloading audio from private blob:', fileUrl);
 
-        // Fetch the audio file from Vercel Blob
-        const audioResponse = await fetch(fileUrl);
-        
-        if (!audioResponse.ok) {
-            throw new Error('Failed to fetch audio file from storage');
-        }
+        // Download from private blob using authenticated access
+        const { body } = await download(fileUrl, {
+            token: process.env.BLOB_READ_WRITE_TOKEN,
+        });
 
-        // Get the blob data
-        const audioBlob = await audioResponse.blob();
+        // Convert stream to blob
+        const audioBlob = await body.blob();
 
         // Create a File object for OpenAI (Edge runtime compatible)
         const audioFile = new File([audioBlob], 'recording.m4a', { 
