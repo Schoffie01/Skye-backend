@@ -12,6 +12,7 @@
   "type": "commonjs",
   "dependencies": {
     "@vercel/blob": "^2.3.1",
+    "@vercel/node": "^5.6.18",
     "openai": "^6.31.0"
   },
   "devDependencies": {
