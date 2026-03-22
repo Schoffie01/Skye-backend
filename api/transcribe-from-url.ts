@@ -27,28 +27,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         const arrayBuffer = await response.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
         
-        console.log('File size:', arrayBuffer.byteLength);
-        console.log('First 8 bytes (hex):', Buffer.from(arrayBuffer).slice(0, 8).toString('hex'));
+        console.log('File size:', buffer.length);
+        console.log('First 8 bytes (hex):', buffer.slice(0, 8).toString('hex'));
         
-        // Create a File object with explicit MIME type and extension
-        const audioFile = new File(
-            [arrayBuffer],
-            'recording.m4a', // Extension is critical
-            { type: 'audio/m4a' } // MIME type is critical
-        );
+        // Create FormData with proper content-type
+        const formData = new FormData() as any;
+        formData.append('file', buffer, {
+            filename: 'recording.m4a',
+            contentType: 'audio/m4a',
+        });
+        formData.append('model', 'whisper-1');
         
-        console.log('Sending to OpenAI:');
-        console.log('  - Filename:', audioFile.name);
-        console.log('  - Size:', audioFile.size);
-        console.log('  - Type:', audioFile.type);
+        console.log('Sending to OpenAI with FormData');
+        console.log('  - Filename: recording.m4a');
+        console.log('  - Size:', buffer.length);
+        console.log('  - Content-Type: audio/m4a');
 
-        const transcription = await client.audio.transcriptions.create({
-            file: audioFile,
-            model: 'whisper-1',
+        // Make direct fetch request to OpenAI with FormData
+        const openaiResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+                ...(formData.getHeaders() as Record<string, string>),
+            },
+            body: formData as any,
         });
 
-        console.log('Transcription completed');
+        if (!openaiResponse.ok) {
+            const errorText = await openaiResponse.text();
+            console.error('OpenAI error:', errorText);
+            throw new Error(`OpenAI transcription failed: ${errorText}`);
+        }
+
+        const transcription = await openaiResponse.json();
+
+        console.log('Transcription completed:', transcription);
 
         return res.status(200).json({ text: transcription.text });
     } catch (error: any) {
