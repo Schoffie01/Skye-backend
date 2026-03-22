@@ -32,36 +32,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         console.log('File size:', buffer.length);
         console.log('First 8 bytes (hex):', buffer.slice(0, 8).toString('hex'));
         
-        // Create FormData with proper content-type
-        const formData = new FormData() as any;
-        formData.append('file', buffer, {
-            filename: 'recording.m4a',
-            contentType: 'audio/m4a',
-        });
-        formData.append('model', 'whisper-1');
+        // Use OpenAI SDK's toFile() method to properly handle the buffer
+        const file = await OpenAI.toFile(buffer, 'recording.m4a');
         
-        console.log('Sending to OpenAI with FormData');
-        console.log('  - Filename: recording.m4a');
-        console.log('  - Size:', buffer.length);
-        console.log('  - Content-Type: audio/m4a');
+        console.log('Sending to OpenAI:');
+        console.log('  - Filename:', file.name);
+        console.log('  - Size:', file.size);
 
-        // Make direct fetch request to OpenAI with FormData
-        const openaiResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-                ...(formData.getHeaders() as Record<string, string>),
-            },
-            body: formData as any,
+        const transcription = await client.audio.transcriptions.create({
+            file: file,
+            model: 'whisper-1',
         });
-
-        if (!openaiResponse.ok) {
-            const errorText = await openaiResponse.text();
-            console.error('OpenAI error:', errorText);
-            throw new Error(`OpenAI transcription failed: ${errorText}`);
-        }
-
-        const transcription = await openaiResponse.json();
 
         console.log('Transcription completed:', transcription);
 
