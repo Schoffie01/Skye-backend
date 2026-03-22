@@ -5,6 +5,8 @@ const client = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
 
+export const maxDuration = 120;
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
@@ -21,20 +23,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         // Fetch from public blob URL
         const response = await fetch(fileUrl);
-        
+
         if (!response.ok) {
             return res.status(404).json({ error: 'File not found in storage' });
         }
 
         const arrayBuffer = await response.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
-        
+
         console.log('File size:', buffer.length);
         console.log('First 8 bytes (hex):', buffer.slice(0, 8).toString('hex'));
-        
+
         // Use OpenAI SDK's toFile() method to properly handle the buffer
         const file = await OpenAI.toFile(buffer, 'recording.m4a');
-        
+
         console.log('Sending to OpenAI:');
         console.log('  - Filename:', file.name);
         console.log('  - Size:', file.size);
@@ -49,8 +51,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(200).json({ text: transcription.text });
     } catch (error: any) {
         console.error('Transcription error:', error);
-        return res.status(500).json({ 
-            error: error.message || "Transcription failed" 
+        return res.status(500).json({
+            error: error.message || "Transcription failed"
         });
     }
 }
