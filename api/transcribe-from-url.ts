@@ -27,21 +27,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         const arrayBuffer = await response.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
         
-        console.log('File size:', arrayBuffer.byteLength);
+        console.log('File size:', buffer.length);
+        console.log('First 8 bytes (hex):', buffer.slice(0, 8).toString('hex'));
         
-        // Create a Blob with the audio data
-        const blob = new Blob([arrayBuffer], { type: 'audio/mp4' });
+        // Use toFile() with Buffer - this properly creates a file-like object for OpenAI
+        const audioFile = await OpenAI.toFile(buffer, 'recording.m4a');
         
         console.log('Sending to OpenAI:');
-        console.log('  - Filename: recording.m4a');
-        console.log('  - Size:', blob.size);
-        console.log('  - Type: audio/mp4');
-
-        // Use toFile() method which is designed for Node.js environments
-        const audioFile = await OpenAI.toFile(blob, 'recording.m4a', {
-            type: 'audio/mp4',
-        });
+        console.log('  - Filename:', audioFile.name);
+        console.log('  - Size:', audioFile.size);
 
         const transcription = await client.audio.transcriptions.create({
             file: audioFile,
