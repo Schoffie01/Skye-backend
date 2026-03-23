@@ -1,28 +1,20 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import OpenAI from "openai";
 
 const client = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
 
-export default async function handler(req: Request) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method !== "POST") {
-        return new Response(JSON.stringify({ error: "Method not allowed" }), {
-            status: 405,
-            headers: { "Content-Type": "application/json" },
-        });
+        return res.status(405).json({ error: "Method not allowed" });
     }
 
     try {
-        const body = await req.json();
-        const topics = body?.topics;
-        const conversations = body?.conversations || [];
-        const style = body?.style || "friendly-encouraging";
+        const { topics, conversations = [], style = "friendly-encouraging" } = req.body;
 
         if (!Array.isArray(topics)) {
-            return new Response(JSON.stringify({ error: "Missing topics array" }), {
-                status: 400,
-                headers: { "Content-Type": "application/json" },
-            });
+            return res.status(400).json({ error: "Missing topics array" });
         }
 
         const cleanedTopics = topics.map((t: any) => ({
@@ -90,30 +82,15 @@ ${JSON.stringify(conversationContext, null, 2)}
         try {
             parsed = JSON.parse(raw);
         } catch {
-            return new Response(
-                JSON.stringify({ error: "Model returned invalid JSON", raw }),
-                {
-                    status: 500,
-                    headers: { "Content-Type": "application/json" },
-                }
-            );
+            return res.status(500).json({ 
+                error: "Model returned invalid JSON", 
+                raw 
+            });
         }
 
-        return new Response(
-            JSON.stringify({ descriptions: parsed.descriptions ?? [] }),
-            {
-                status: 200,
-                headers: { "Content-Type": "application/json" },
-            }
-        );
+        return res.status(200).json({ descriptions: parsed.descriptions ?? [] });
     } catch (error) {
         console.error("enhance-descriptions error:", error);
-        return new Response(
-            JSON.stringify({ error: "Failed to enhance descriptions" }),
-            {
-                status: 500,
-                headers: { "Content-Type": "application/json" },
-            }
-        );
+        return res.status(500).json({ error: "Failed to enhance descriptions" });
     }
 }
