@@ -1,26 +1,20 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import OpenAI from "openai";
 
 const client = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
 
-export default async function handler(req: Request) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method !== "POST") {
-        return new Response(JSON.stringify({ error: "Method not allowed" }), {
-            status: 405,
-            headers: { "Content-Type": "application/json" },
-        });
+        return res.status(405).json({ error: "Method not allowed" });
     }
 
     try {
-        const body = await req.json();
-        const text = body?.text;
+        const { text } = req.body;
 
         if (!text || typeof text !== "string") {
-            return new Response(JSON.stringify({ error: "Missing text" }), {
-                status: 400,
-                headers: { "Content-Type": "application/json" },
-            });
+            return res.status(400).json({ error: "Missing text" });
         }
 
         // Truncate text to prevent timeout (match batch-analyze behavior)
@@ -62,24 +56,15 @@ ${truncatedText}
         try {
             parsed = JSON.parse(raw);
         } catch {
-            return new Response(
-                JSON.stringify({ error: "Model returned invalid JSON", raw }),
-                {
-                    status: 500,
-                    headers: { "Content-Type": "application/json" },
-                }
-            );
+            return res.status(500).json({ 
+                error: "Model returned invalid JSON", 
+                raw 
+            });
         }
 
-        return new Response(JSON.stringify({ topics: parsed.topics ?? [] }), {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-        });
+        return res.status(200).json({ topics: parsed.topics ?? [] });
     } catch (error) {
         console.error("analyze-topics error:", error);
-        return new Response(JSON.stringify({ error: "Failed to analyze topics" }), {
-            status: 500,
-            headers: { "Content-Type": "application/json" },
-        });
+        return res.status(500).json({ error: "Failed to analyze topics" });
     }
 }
